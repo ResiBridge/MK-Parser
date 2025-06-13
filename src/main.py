@@ -275,10 +275,10 @@ Examples:
     # Validation-only mode
     if args.validate_only:
         if errors == 0:
-            print("✅ All configuration files are valid")
+            print(" All configuration files are valid")
             sys.exit(0)
         else:
-            print(f"❌ {errors} configuration file(s) have validation errors")
+            print(f" {errors} configuration file(s) have validation errors")
             sys.exit(1)
     
     # Filter sections if specified

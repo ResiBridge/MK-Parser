@@ -12,16 +12,16 @@ from formatters.markdown import GitHubMarkdownFormatter
 
 def main():
     """Run demo parsing."""
-    print("🔧 RouterOS Configuration Parser Demo\n")
+    print(" RouterOS Configuration Parser Demo\n")
     
     # Parse the comprehensive sample config
     config_file = Path(__file__).parent / 'tests' / 'fixtures' / 'comprehensive_config.rsc'
     
     if not config_file.exists():
-        print(f"❌ Config file not found: {config_file}")
+        print(f" Config file not found: {config_file}")
         return
         
-    print(f"📄 Parsing: {config_file.name}")
+    print(f" Parsing: {config_file.name}")
     
     with open(config_file, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -33,14 +33,14 @@ def main():
     # Get summary
     summary = config.get_device_summary()
     
-    print(f"✅ Parsed {summary['sections_parsed']} sections")
-    print(f"📋 Sections found: {', '.join(summary['section_list'])}")
+    print(f" Parsed {summary['sections_parsed']} sections")
+    print(f" Sections found: {', '.join(summary['section_list'])}")
     
     if summary['parsing_errors'] > 0:
-        print(f"⚠️  Parsing errors: {summary['parsing_errors']}")
+        print(f"  Parsing errors: {summary['parsing_errors']}")
     
     # Generate markdown
-    print("\n📝 Generating GitHub Markdown Summary...\n")
+    print("\n Generating GitHub Markdown Summary...\n")
     
     formatter = GitHubMarkdownFormatter()
     markdown = formatter.format_device_summary(summary)
@@ -58,8 +58,8 @@ def main():
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(markdown)
         
-    print(f"\n💾 Full output saved to: {output_file}")
-    print(f"📊 Total markdown lines: {len(lines)}")
+    print(f"\n Full output saved to: {output_file}")
+    print(f" Total markdown lines: {len(lines)}")
     
     return True
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         success = main()
         sys.exit(0 if success else 1)
     except Exception as e:
-        print(f"💥 Demo failed: {e}")
+        print(f" Demo failed: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

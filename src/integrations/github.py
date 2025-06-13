@@ -152,7 +152,7 @@ class GitHubIntegration:
         
         # Set exit code for CI/CD
         if not summary['success']:
-            print("❌ Configuration validation failed", file=sys.stderr)
+            print(" Configuration validation failed", file=sys.stderr)
             for result in summary['results']:
                 if not result['valid']:
                     print(f"  {result['file_path']}: {result.get('error', 'Unknown error')}", file=sys.stderr)
@@ -167,7 +167,7 @@ class GitHubIntegration:
         Returns:
             Comment content with GitHub formatting
         """
-        return f"""## 🔧 RouterOS Configuration Analysis
+        return f"""##  RouterOS Configuration Analysis
 
 {markdown}
 

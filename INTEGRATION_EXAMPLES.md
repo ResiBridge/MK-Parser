@@ -2,7 +2,7 @@
 
 This document provides practical examples for integrating the RouterOS parser into different repositories and workflows.
 
-## 📦 Installation Options
+##  Installation Options
 
 ### Option 1: Git Submodule (Recommended for MK-build repo)
 ```bash
@@ -37,7 +37,7 @@ sys.path.append('./src')
 from routeros_parser import RouterOSParser, generate_markdown_summary
 ```
 
-## 🔧 Integration Patterns
+##  Integration Patterns
 
 ### For MK-build (Config Generator Repo)
 
@@ -59,13 +59,13 @@ def validate_generated_configs():
     results = bulk.validate_configs('./generated_configs/', recursive=True)
     
     if not results['success']:
-        print(f"❌ {results['invalid_files']} config(s) failed validation")
+        print(f" {results['invalid_files']} config(s) failed validation")
         for result in results['results']:
             if not result['valid']:
                 print(f"  {result['file_path']}: {result.get('error', 'Unknown error')}")
         sys.exit(1)
     
-    print(f"✅ All {results['valid_files']} config(s) are valid")
+    print(f" All {results['valid_files']} config(s) are valid")
 
 if __name__ == "__main__":
     validate_generated_configs()
@@ -84,7 +84,7 @@ summaries = bulk.parse_backup_configs('./config_templates/')
 
 # Generate multi-device documentation
 bulk.export_to_markdown(summaries, './docs/CONFIG_TEMPLATES.md')
-print("📝 Template documentation generated")
+print(" Template documentation generated")
 ```
 
 ### For Backup Repo
@@ -113,7 +113,7 @@ def analyze_daily_backups():
     # Generate fleet summary
     fleet_summary = bulk.generate_fleet_summary(summaries)
     
-    print(f"📊 Fleet Summary for {today}:")
+    print(f" Fleet Summary for {today}:")
     print(f"  Total Devices: {fleet_summary['fleet_summary']['total_devices']}")
     print(f"  Success Rate: {fleet_summary['fleet_summary']['success_rate']}")
     print(f"  Total Interfaces: {fleet_summary['network_summary']['total_interfaces']}")
@@ -141,13 +141,13 @@ def compare_backup_configs(device_name: str, backup1_date: str, backup2_date: st
     config2 = f"./backups/{backup2_date}/{device_name}.rsc"
     
     if not (Path(config1).exists() and Path(config2).exists()):
-        print(f"❌ Backup files not found for {device_name}")
+        print(f" Backup files not found for {device_name}")
         return
     
     validator = ConfigValidator()
     comparison = validator.compare_configs(config1, config2)
     
-    print(f"🔍 Config Changes for {device_name}:")
+    print(f" Config Changes for {device_name}:")
     print(f"  From: {backup1_date} → To: {backup2_date}")
     print(f"  Total Changes: {comparison['change_summary']['total_changes']}")
     print(f"  Sections Added: {comparison['change_summary']['sections_added']}")
@@ -235,28 +235,28 @@ def main():
         # Parse and create GitHub outputs
         result = gh.parse_and_comment(config_path)
         
-        print(f"✅ Parsed {result['configs_parsed']} configurations")
-        print(f"📁 Found {result['config_files_found']} config files")
-        print(f"❌ {result['parsing_errors']} parsing errors")
+        print(f" Parsed {result['configs_parsed']} configurations")
+        print(f" Found {result['config_files_found']} config files")
+        print(f" {result['parsing_errors']} parsing errors")
         
         # Validate configurations
         validation = gh.validate_configs(config_path)
         
         if not validation['success']:
-            print(f"❌ Validation failed: {validation['invalid_files']} invalid configs")
+            print(f" Validation failed: {validation['invalid_files']} invalid configs")
             sys.exit(1)
         else:
-            print(f"✅ All {validation['valid_files']} configs are valid")
+            print(f" All {validation['valid_files']} configs are valid")
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
     main()
 ```
 
-## 🛠️ Command Line Usage
+##  Command Line Usage
 
 ### Basic Operations
 ```bash
@@ -291,7 +291,7 @@ python3 -m routeros_parser config.rsc --device-name "Production-Router"
 python3 -m routeros_parser configs/ --quiet
 ```
 
-## 🐍 Python API Examples
+##  Python API Examples
 
 ### Simple Parsing
 ```python
@@ -345,7 +345,7 @@ comparison = validator.compare_configs('old.rsc', 'new.rsc')
 print(f"Changes: {comparison['change_summary']['total_changes']}")
 ```
 
-## 🔗 Integration Best Practices
+##  Integration Best Practices
 
 ### 1. Error Handling
 ```python
@@ -354,11 +354,11 @@ from routeros_parser import validate_config_file
 try:
     result = validate_config_file('config.rsc')
     if result['valid']:
-        print("✅ Configuration is valid")
+        print(" Configuration is valid")
     else:
-        print(f"❌ Validation failed: {result['error']}")
+        print(f" Validation failed: {result['error']}")
 except Exception as e:
-    print(f"💥 Parser error: {e}")
+    print(f" Parser error: {e}")
 ```
 
 ### 2. Performance Optimization

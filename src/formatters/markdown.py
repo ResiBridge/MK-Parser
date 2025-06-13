@@ -22,10 +22,10 @@ class GitHubMarkdownFormatter:
         sections = summary.get('section_summaries', {})
         errors = summary.get('parsing_errors', 0)
         
-        markdown = f"# 🔧 {device_name} Configuration Summary\n\n"
+        markdown = f"# {device_name} Configuration Summary\n\n"
         
         # Overview section
-        markdown += "## 📊 Overview\n\n"
+        markdown += "## Overview\n\n"
         markdown += f"**Device Name:** `{device_name}`  \n"
         markdown += f"**Sections Parsed:** {len(sections)}  \n"
         
@@ -100,15 +100,15 @@ class GitHubMarkdownFormatter:
         elif 'IP' in section_name:
             return self._format_ip_section(section_data)
         elif section_name in ['System', 'System Identity', 'Users', 'IP Services']:
-            return self._format_system_section(section_data, '⚙️')
+            return self._format_system_section(section_data, '')
         elif 'Firewall' in section_name:
-            return self._format_firewall_section(section_data, '🔥')
+            return self._format_firewall_section(section_data, '')
         else:
-            return self._format_generic_section(section_data, '📋')
+            return self._format_generic_section(section_data, '')
             
     def _format_interface_section(self, data: Dict[str, Any]) -> str:
         """Format interface section data."""
-        markdown = f"## 🔌 Interfaces\n\n"
+        markdown = f"## Interfaces\n\n"
         
         # Summary table
         markdown += "| Type | Count |\n"
@@ -145,7 +145,7 @@ class GitHubMarkdownFormatter:
     def _format_ip_section(self, data: Dict[str, Any]) -> str:
         """Format IP section data."""
         section_name = data.get('section', 'IP Configuration')
-        markdown = f"## 🌐 {section_name}\n\n"
+        markdown = f"## {section_name}\n\n"
         
         # Section-specific formatting
         if 'address' in section_name.lower():
@@ -208,7 +208,7 @@ class GitHubMarkdownFormatter:
             
             # Users list
             if data.get('user_list'):
-                markdown += "<details>\n<summary>👥 Users</summary>\n\n"
+                markdown += "<details>\n<summary> Users</summary>\n\n"
                 for user in data.get('user_list', []):
                     markdown += f"- {user}\n"
                 markdown += "\n</details>\n\n"
@@ -258,7 +258,7 @@ class GitHubMarkdownFormatter:
             
             # Actions breakdown
             if data.get('filter_by_action'):
-                markdown += "<details>\n<summary>🎯 Actions Breakdown</summary>\n\n"
+                markdown += "<details>\n<summary> Actions Breakdown</summary>\n\n"
                 for action, count in data.get('filter_by_action', {}).items():
                     markdown += f"- **{action.title()}**: {count}\n"
                 markdown += "\n</details>\n\n"
@@ -282,7 +282,7 @@ class GitHubMarkdownFormatter:
             
             # List names
             if data.get('address_list_names'):
-                markdown += "<details>\n<summary>📝 Address Lists</summary>\n\n"
+                markdown += "<details>\n<summary> Address Lists</summary>\n\n"
                 for list_name in data.get('address_list_names', []):
                     markdown += f"- `{list_name}`\n"
                 markdown += "\n</details>\n\n"
@@ -317,8 +317,8 @@ class GitHubMarkdownFormatter:
         
     def _format_error_section(self, section_name: str, data: Dict[str, Any]) -> str:
         """Format section with parsing error."""
-        markdown = f"## ⚠️ {section_name}\n\n"
-        markdown += f"**Status:** ❌ Parsing Error  \n"
+        markdown = f"## {section_name}\n\n"
+        markdown += f"**Status:**  Parsing Error  \n"
         markdown += f"**Error:** `{data.get('error', 'Unknown error')}`  \n\n"
         return markdown
         
@@ -327,7 +327,7 @@ class GitHubMarkdownFormatter:
         if not errors:
             return ""
             
-        markdown = "## ⚠️ Parsing Errors\n\n"
+        markdown = "## Parsing Errors\n\n"
         
         for i, error in enumerate(errors, 1):
             markdown += f"### Error {i}: {error.get('section', 'Unknown Section')}\n\n"
@@ -353,7 +353,7 @@ class GitHubMarkdownFormatter:
             device_name = summary.get('device_name', 'Unknown')
             sections = summary.get('sections_parsed', 0)
             errors = summary.get('parsing_errors', 0)
-            status = "✅ OK" if errors == 0 else f"⚠️ {errors} errors"
+            status = " OK" if errors == 0 else f" {errors} errors"
             
             markdown += f"| {device_name} | {sections} | {errors} | {status} |\n"
             
@@ -366,7 +366,7 @@ class GitHubMarkdownFormatter:
         markdown += "## 📄 Device Details\n\n"
         for summary in device_summaries:
             device_name = summary.get('device_name', 'Unknown Device')
-            markdown += f"<details>\n<summary>📋 {device_name}</summary>\n\n"
+            markdown += f"<details>\n<summary> {device_name}</summary>\n\n"
             markdown += self.format_device_summary(summary)
             markdown += "\n</details>\n\n"
             
@@ -374,7 +374,7 @@ class GitHubMarkdownFormatter:
         
     def _generate_network_stats(self, device_summaries: List[Dict[str, Any]]) -> str:
         """Generate network-wide statistics."""
-        markdown = "## 📊 Network Statistics\n\n"
+        markdown = "## Network Statistics\n\n"
         
         # Aggregate statistics
         total_interfaces = 0

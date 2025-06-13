@@ -14,7 +14,7 @@ A Python-based parser for RouterOS configuration files that generates GitHub-fri
 - **Extensive Testing**: Comprehensive test suite with 50+ test cases
 - **Zero Dependencies**: Pure Python implementation
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Parse a Single Configuration
 
@@ -34,7 +34,7 @@ python3 src/main.py configs/ --recursive
 python3 src/main.py config.rsc --github
 ```
 
-## 📋 Supported Sections
+##  Supported Sections
 
 ### System & Administration (20 sections)
 - `/system identity`, `/system clock`, `/system note`
@@ -92,7 +92,7 @@ python3 src/main.py config.rsc --github
 
 **See [IMPLEMENTED_SECTIONS.md](IMPLEMENTED_SECTIONS.md) for the complete list of 140+ supported sections.**
 
-## 🔧 Installation
+##  Installation
 
 ### Clone and Setup
 
@@ -157,20 +157,20 @@ python3 src/main.py config.rsc --sections "interface,firewall,system"
 python3 src/main.py config.rsc --validate-only
 ```
 
-## 🔍 Sample Output
+##  Sample Output
 
 The parser generates comprehensive markdown summaries like this:
 
 ```markdown
-# 🔧 MyRouter Configuration Summary
+#  MyRouter Configuration Summary
 
-## 📊 Overview
+##  Overview
 
 **Device Name:** `MyRouter`  
 **Sections Parsed:** 12  
-**Parsing Errors:** ✅ 0  
+**Parsing Errors:**  0  
 
-### 📈 Quick Statistics
+###  Quick Statistics
 
 | Category | Count |
 |----------|-------|
@@ -179,7 +179,7 @@ The parser generates comprehensive markdown summaries like this:
 | Firewall Rules | 15 |
 | Users | 3 |
 
-## 🔌 Interfaces
+##  Interfaces
 
 | Type | Count |
 |------|-------|
@@ -194,7 +194,7 @@ The parser generates comprehensive markdown summaries like this:
 
 </details>
 
-## 🔥 Firewall
+##  Firewall
 
 | Rule Type | Count |
 |-----------|-------|
@@ -203,7 +203,7 @@ The parser generates comprehensive markdown summaries like this:
 | NAT | 2 |
 ```
 
-## 🛠️ Development
+##  Development
 
 ### Running Tests
 
@@ -239,7 +239,7 @@ routeros-parser/
 └── README.md
 ```
 
-## 🔧 GitHub Actions Integration
+##  GitHub Actions Integration
 
 Create a workflow to automatically parse RouterOS configs:
 
@@ -270,7 +270,7 @@ jobs:
           python3 routeros-parser/src/main.py configs/ --github --recursive
 ```
 
-## 🧪 Testing
+##  Testing
 
 ### Run All Tests
 ```bash
@@ -303,7 +303,7 @@ python3 tests/test_sections/test_mpls_parsers.py
 - **Security tests** for password redaction
 - **Performance tests** for large configuration files
 
-## 📊 Features in Detail
+##  Features in Detail
 
 ### Multi-line Command Support
 Handles RouterOS's backslash line continuation:
@@ -339,11 +339,11 @@ Handles RouterOS's backslash line continuation:
 4. Ensure all tests pass
 5. Submit a pull request
 
-## 📄 License
+##  License
 
 MIT License - see LICENSE file for details.
 
-## 🔗 Related Projects
+##  Related Projects
 
 - [MikroTik RouterOS Documentation](https://help.mikrotik.com/)
 - [RouterOS Scripting](https://wiki.mikrotik.com/wiki/Manual:Scripting)
@@ -353,12 +353,12 @@ MIT License - see LICENSE file for details.
 - Large configuration files (>10MB) may be slow to parse
 - Some very specialized RouterOS features may use generic parsing
 
-## 🎯 Roadmap
+##  Roadmap
 
-- [x] ~~Complete RouterOS section coverage~~ ✅ **Completed!**
-- [x] ~~Comprehensive test suite~~ ✅ **Completed!**
-- [x] ~~Security features (password redaction)~~ ✅ **Completed!**
-- [x] ~~MPLS and advanced protocol support~~ ✅ **Completed!**
+- [x] ~~Complete RouterOS section coverage~~  **Completed!**
+- [x] ~~Comprehensive test suite~~  **Completed!**
+- [x] ~~Security features (password redaction)~~  **Completed!**
+- [x] ~~MPLS and advanced protocol support~~  **Completed!**
 - [ ] Web interface for configuration analysis
 - [ ] Configuration diff visualization  
 - [ ] Integration with network monitoring tools

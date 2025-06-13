@@ -47,7 +47,7 @@ class TestRouterOSParser(unittest.TestCase):
         self.assertIn('/ip address', sections)
         self.assertIn('/ip firewall filter', sections)
         
-        print(f"✅ Basic config: {summary['sections_parsed']} sections parsed successfully")
+        print(f" Basic config: {summary['sections_parsed']} sections parsed successfully")
         
     def test_complex_config_parsing(self):
         """Test parsing of complex configuration file."""
@@ -71,7 +71,7 @@ class TestRouterOSParser(unittest.TestCase):
         self.assertIn('/ip firewall address-list', sections)
         self.assertIn('/queue simple', sections)
         
-        print(f"✅ Complex config: {summary['sections_parsed']} sections parsed successfully")
+        print(f" Complex config: {summary['sections_parsed']} sections parsed successfully")
         
     def test_section_discovery(self):
         """Test dynamic section discovery."""
@@ -87,7 +87,7 @@ class TestRouterOSParser(unittest.TestCase):
         self.assertIn('/interface vlan', discovered_sections)
         self.assertIn('/ip firewall filter', discovered_sections)
         
-        print(f"✅ Section discovery: {len(discovered_sections)} sections found")
+        print(f" Section discovery: {len(discovered_sections)} sections found")
         
     def test_markdown_formatter(self):
         """Test GitHub markdown formatter."""
@@ -103,12 +103,12 @@ class TestRouterOSParser(unittest.TestCase):
         
         # Check markdown content
         self.assertIsInstance(markdown, str)
-        self.assertIn('# 🔧 TestRouter', markdown)
-        self.assertIn('## 📊 Overview', markdown)
-        self.assertIn('## 🔌 Interfaces', markdown)
-        self.assertIn('## 🌐 IP', markdown)
+        self.assertIn('# TestRouter', markdown)
+        self.assertIn('## Overview', markdown)
+        self.assertIn('## Interfaces', markdown)
+        self.assertIn('## IP', markdown)
         
-        print("✅ Markdown formatting completed successfully")
+        print(" Markdown formatting completed successfully")
         
     def test_multi_device_formatting(self):
         """Test multi-device summary formatting."""
@@ -129,11 +129,11 @@ class TestRouterOSParser(unittest.TestCase):
         markdown = formatter.format_multi_device_summary(summaries)
         
         # Check content
-        self.assertIn('# 🏢 Network Configuration Summary', markdown)
+        self.assertIn('# Network Configuration Summary', markdown)
         self.assertIn('**Total Devices:** 2', markdown)
-        self.assertIn('## 📱 Devices Overview', markdown)
+        self.assertIn('## Devices Overview', markdown)
         
-        print("✅ Multi-device formatting completed successfully")
+        print(" Multi-device formatting completed successfully")
         
     def test_error_handling(self):
         """Test error handling with malformed config."""
@@ -155,7 +155,7 @@ class TestRouterOSParser(unittest.TestCase):
         summary = config.get_device_summary()
         self.assertIsNotNone(summary)
         
-        print("✅ Error handling test completed")
+        print(" Error handling test completed")
 
 
 class TestPatternExtraction(unittest.TestCase):
@@ -180,7 +180,7 @@ class TestPatternExtraction(unittest.TestCase):
         result = self.patterns.extract_ip_network('invalid-ip')
         self.assertIsNone(result)
         
-        print("✅ IP extraction tests passed")
+        print(" IP extraction tests passed")
         
     def test_time_parsing(self):
         """Test time value parsing."""
@@ -189,7 +189,7 @@ class TestPatternExtraction(unittest.TestCase):
         self.assertEqual(self.patterns.parse_time_value('2h30m'), 9000)
         self.assertEqual(self.patterns.parse_time_value('1w2d3h4m5s'), 788645)
         
-        print("✅ Time parsing tests passed")
+        print(" Time parsing tests passed")
         
     def test_vlan_validation(self):
         """Test VLAN ID validation."""
@@ -198,12 +198,12 @@ class TestPatternExtraction(unittest.TestCase):
         self.assertFalse(self.patterns.validate_vlan_id(0))
         self.assertFalse(self.patterns.validate_vlan_id(4095))
         
-        print("✅ VLAN validation tests passed")
+        print(" VLAN validation tests passed")
 
 
 def run_tests():
     """Run all tests and display results."""
-    print("🧪 Running RouterOS Parser Tests\n")
+    print(" Running RouterOS Parser Tests\n")
     
     # Create test suite
     loader = unittest.TestLoader()
@@ -247,33 +247,33 @@ def run_tests():
         suite.addTests(loader.loadTestsFromTestCase(mpls_tests.TestMPLSInterfaceParser))
         suite.addTests(loader.loadTestsFromTestCase(mpls_tests.TestMPLSForwardingTableParser))
         
-        print("✅ All section-specific tests loaded")
+        print(" All section-specific tests loaded")
         
     except ImportError as e:
-        print(f"⚠️ Warning: Could not load some section tests: {e}")
+        print(f" Warning: Could not load some section tests: {e}")
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     
     # Print summary
-    print(f"\n📊 Test Summary:")
+    print(f"\n Test Summary:")
     print(f"Tests run: {result.testsRun}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")
     
     if result.failures:
-        print("\n❌ Failures:")
+        print("\n Failures:")
         for test, failure in result.failures:
             print(f"  - {test}: {failure}")
             
     if result.errors:
-        print("\n💥 Errors:")
+        print("\n Errors:")
         for test, error in result.errors:
             print(f"  - {test}: {error}")
             
     success = len(result.failures) == 0 and len(result.errors) == 0
-    print(f"\n{'✅ All tests passed!' if success else '❌ Some tests failed.'}")
+    print(f"\n{' All tests passed!' if success else ' Some tests failed.'}")
     
     return success
 
