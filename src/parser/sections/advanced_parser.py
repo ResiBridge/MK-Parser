@@ -359,6 +359,400 @@ class ContainerParser(BaseSectionParser):
         }
 
 
+class ContainerConfigParser(BaseSectionParser):
+    """Parser for /container config section (RouterOS 7+)."""
+    
+    def parse(self, lines: List[str]) -> Dict[str, Any]:
+        """Parse container configuration settings."""
+        commands = []
+        
+        for line in lines:
+            if not line.strip():
+                continue
+                
+            command = self._parse_container_config_command(line)
+            if command:
+                commands.append(command)
+        
+        self.commands = commands
+        return {
+            'section': '/container config',
+            'commands': commands
+        }
+        
+    def _parse_container_config_command(self, line: str) -> Dict[str, Any]:
+        """Parse a single container config command."""
+        command = {'raw_line': line}
+        
+        if line.startswith('set '):
+            command['action'] = 'set'
+            params = line[4:].strip()
+        else:
+            command['action'] = 'set'
+            params = line
+            
+        # Parse parameters
+        self._parse_container_config_parameters(params, command)
+        
+        return command
+        
+    def _parse_container_config_parameters(self, params: str, command: Dict[str, Any]):
+        """Parse container config parameters."""
+        parser = MPLSParser()
+        parts = parser._split_parameters(params)
+        
+        for part in parts:
+            if '=' in part:
+                key, value = part.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+                
+                if key == 'registry-url':
+                    command['registry_url'] = value
+                    command['uses_custom_registry'] = bool(value)
+                    # Classify registry type
+                    if 'docker.io' in value or 'hub.docker.com' in value:
+                        command['registry_type'] = 'docker_hub'
+                    elif 'quay.io' in value:
+                        command['registry_type'] = 'quay'
+                    elif 'gcr.io' in value:
+                        command['registry_type'] = 'google'
+                    elif 'registry.redhat.io' in value:
+                        command['registry_type'] = 'redhat'
+                    else:
+                        command['registry_type'] = 'custom'
+                elif key == 'tmpdir':
+                    command['temp_directory'] = value
+                    command['uses_custom_tmpdir'] = bool(value)
+                elif key == 'ram-high':
+                    # RAM high watermark
+                    if value.endswith('M') or value.endswith('MB'):
+                        try:
+                            command['ram_high_mb'] = int(value.rstrip('MB').rstrip('M'))
+                            command['high_ram_limit'] = command['ram_high_mb'] > 512  # Changed threshold
+                        except ValueError:
+                            command['ram_high_mb'] = value
+                    command['ram_high'] = value
+                elif key == 'extract-timeout':
+                    command['extract_timeout_seconds'] = RouterOSPatterns.parse_time_value(value)
+                    command['long_timeout'] = command.get('extract_timeout_seconds', 0) > 300
+                    command[key] = value
+                elif key in ['enabled']:
+                    command[key] = value.lower() in ['yes', 'true', '1']
+                else:
+                    command[key] = value
+                    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get container config section summary."""
+        return {
+            'section': 'Container Config',
+            'command_count': len(self.commands)
+        }
+
+
+class ContainerEnvsParser(BaseSectionParser):
+    """Parser for /container envs section (RouterOS 7+)."""
+    
+    def parse(self, lines: List[str]) -> Dict[str, Any]:
+        """Parse container environment variables."""
+        commands = []
+        
+        for line in lines:
+            if not line.strip():
+                continue
+                
+            command = self._parse_container_envs_command(line)
+            if command:
+                commands.append(command)
+        
+        self.commands = commands
+        return {
+            'section': '/container envs',
+            'commands': commands
+        }
+        
+    def _parse_container_envs_command(self, line: str) -> Dict[str, Any]:
+        """Parse a single container envs command."""
+        command = {'raw_line': line}
+        
+        if line.startswith('add '):
+            command['action'] = 'add'
+            params = line[4:].strip()
+        elif line.startswith('set '):
+            command['action'] = 'set'
+            params = line[4:].strip()
+        else:
+            command['action'] = 'set'
+            params = line
+            
+        # Parse parameters
+        self._parse_container_envs_parameters(params, command)
+        
+        return command
+        
+    def _parse_container_envs_parameters(self, params: str, command: Dict[str, Any]):
+        """Parse container environment variable parameters."""
+        parser = MPLSParser()
+        parts = parser._split_parameters(params)
+        
+        for part in parts:
+            if '=' in part:
+                key, value = part.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+                
+                if key == 'name':
+                    command['env_name'] = value
+                    # Classify common environment variable types - check for sensitive first
+                    if 'PASSWORD' in value.upper() or 'SECRET' in value.upper() or 'KEY' in value.upper() or 'TOKEN' in value.upper():
+                        command['env_type'] = 'secret'
+                        command['contains_sensitive'] = True
+                    elif value.upper() in ['PATH', 'HOME', 'USER', 'SHELL']:
+                        command['env_type'] = 'system'
+                    elif value.upper().startswith('DB_'):
+                        command['env_type'] = 'database'
+                    elif value.upper() in ['DEBUG', 'LOG_LEVEL', 'VERBOSE']:
+                        command['env_type'] = 'logging'
+                    else:
+                        command['env_type'] = 'application'
+                elif key == 'value':
+                    command['env_value'] = value
+                    command['has_value'] = bool(value)
+                    # Check for sensitive values (but don't log them)
+                    if any(word in value.lower() for word in ['password', 'secret', 'key', 'token', 'auth']):
+                        command['potentially_sensitive'] = True
+                    command['value_length'] = len(value)
+                elif key in ['disabled']:
+                    command[key] = value.lower() in ['yes', 'true', '1']
+                else:
+                    command[key] = value
+                    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get container envs section summary."""
+        env_count = len(self.commands)
+        sensitive_count = len([cmd for cmd in self.commands if cmd.get('contains_sensitive', False) or cmd.get('potentially_sensitive', False)])
+        
+        return {
+            'section': 'Container Environment Variables',
+            'command_count': env_count,
+            'environment_variable_count': env_count,
+            'sensitive_variables': sensitive_count,
+            'has_sensitive_data': sensitive_count > 0
+        }
+
+
+class ContainerMountsParser(BaseSectionParser):
+    """Parser for /container mounts section (RouterOS 7+)."""
+    
+    def parse(self, lines: List[str]) -> Dict[str, Any]:
+        """Parse container mount point configuration."""
+        commands = []
+        
+        for line in lines:
+            if not line.strip():
+                continue
+                
+            command = self._parse_container_mounts_command(line)
+            if command:
+                commands.append(command)
+        
+        self.commands = commands
+        return {
+            'section': '/container mounts',
+            'commands': commands
+        }
+        
+    def _parse_container_mounts_command(self, line: str) -> Dict[str, Any]:
+        """Parse a single container mounts command."""
+        command = {'raw_line': line}
+        
+        if line.startswith('add '):
+            command['action'] = 'add'
+            params = line[4:].strip()
+        elif line.startswith('set '):
+            command['action'] = 'set'
+            params = line[4:].strip()
+        else:
+            command['action'] = 'set'
+            params = line
+            
+        # Parse parameters
+        self._parse_container_mounts_parameters(params, command)
+        
+        return command
+        
+    def _parse_container_mounts_parameters(self, params: str, command: Dict[str, Any]):
+        """Parse container mount point parameters."""
+        parser = MPLSParser()
+        parts = parser._split_parameters(params)
+        
+        for part in parts:
+            if '=' in part:
+                key, value = part.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+                
+                if key == 'name':
+                    command['mount_name'] = value
+                elif key == 'src':
+                    command['source_path'] = value
+                    # Classify source path types
+                    if value.startswith('/flash/'):
+                        command['source_type'] = 'flash'
+                    elif value.startswith('/rw/'):
+                        command['source_type'] = 'rw_partition'
+                    elif value.startswith('/tmp/'):
+                        command['source_type'] = 'temporary'
+                    elif value.startswith('/etc/'):
+                        command['source_type'] = 'system_config'
+                    elif value.startswith('/var/'):
+                        command['source_type'] = 'variable_data'
+                    else:
+                        command['source_type'] = 'other'
+                elif key == 'dst':
+                    command['destination_path'] = value
+                    # Common container mount points
+                    if value in ['/app', '/usr/src/app', '/opt/app']:
+                        command['mount_purpose'] = 'application'
+                    elif value in ['/data', '/var/lib', '/storage']:
+                        command['mount_purpose'] = 'data'
+                    elif value in ['/config', '/etc']:
+                        command['mount_purpose'] = 'configuration'
+                    elif value in ['/logs', '/var/log']:
+                        command['mount_purpose'] = 'logging'
+                    elif value in ['/tmp', '/temp']:
+                        command['mount_purpose'] = 'temporary'
+                    else:
+                        command['mount_purpose'] = 'custom'
+                elif key == 'options':
+                    command['mount_options'] = value
+                    command['read_only'] = 'ro' in value
+                    command['read_write'] = 'rw' in value
+                    command['bind_mount'] = 'bind' in value
+                elif key in ['disabled']:
+                    command[key] = value.lower() in ['yes', 'true', '1']
+                else:
+                    command[key] = value
+                    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get container mounts section summary."""
+        mount_count = len(self.commands)
+        ro_mounts = len([cmd for cmd in self.commands if cmd.get('read_only', False)])
+        rw_mounts = len([cmd for cmd in self.commands if cmd.get('read_write', False)])
+        
+        return {
+            'section': 'Container Mounts',
+            'command_count': mount_count,
+            'mount_point_count': mount_count,
+            'read_only_mounts': ro_mounts,
+            'read_write_mounts': rw_mounts,
+            'has_bind_mounts': any(cmd.get('bind_mount', False) for cmd in self.commands)
+        }
+
+
+class ZeroTierParser(BaseSectionParser):
+    """Parser for /zerotier section (RouterOS 7.6+)."""
+    
+    def parse(self, lines: List[str]) -> Dict[str, Any]:
+        """Parse ZeroTier network configuration."""
+        commands = []
+        
+        for line in lines:
+            if not line.strip():
+                continue
+                
+            command = self._parse_zerotier_command(line)
+            if command:
+                commands.append(command)
+        
+        self.commands = commands
+        return {
+            'section': '/zerotier',
+            'commands': commands
+        }
+        
+    def _parse_zerotier_command(self, line: str) -> Dict[str, Any]:
+        """Parse a single ZeroTier command."""
+        command = {'raw_line': line}
+        
+        if line.startswith('add '):
+            command['action'] = 'add'
+            params = line[4:].strip()
+        elif line.startswith('set '):
+            command['action'] = 'set'
+            params = line[4:].strip()
+        else:
+            command['action'] = 'set'
+            params = line
+            
+        # Parse parameters
+        self._parse_zerotier_parameters(params, command)
+        
+        return command
+        
+    def _parse_zerotier_parameters(self, params: str, command: Dict[str, Any]):
+        """Parse ZeroTier parameters."""
+        parser = MPLSParser()
+        parts = parser._split_parameters(params)
+        
+        for part in parts:
+            if '=' in part:
+                key, value = part.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+                
+                if key == 'network':
+                    command['network_id'] = value
+                    # ZeroTier network IDs are 16-character hex strings
+                    if len(value) == 16 and all(c in '0123456789abcdefABCDEF' for c in value):
+                        command['valid_network_id'] = True
+                    else:
+                        command['valid_network_id'] = False
+                elif key == 'name':
+                    command['interface_name'] = value
+                elif key == 'identity':
+                    command['identity_file'] = value
+                    command['uses_custom_identity'] = bool(value)
+                elif key == 'port':
+                    try:
+                        port_num = int(value)
+                        command['port_number'] = port_num
+                        command['uses_default_port'] = port_num == 9993
+                        command['valid_port'] = 1 <= port_num <= 65535
+                    except ValueError:
+                        command['port_number'] = value
+                        command['valid_port'] = False
+                    command['port'] = value
+                elif key == 'copy-routes':
+                    command['copy_routes'] = value.lower() in ['yes', 'true', '1']
+                elif key == 'allow-managed':
+                    command['allow_managed'] = value.lower() in ['yes', 'true', '1']
+                elif key == 'allow-global':
+                    command['allow_global'] = value.lower() in ['yes', 'true', '1']
+                elif key == 'allow-default':
+                    command['allow_default'] = value.lower() in ['yes', 'true', '1']
+                elif key in ['disabled']:
+                    command[key] = value.lower() in ['yes', 'true', '1']
+                else:
+                    command[key] = value
+                    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get ZeroTier section summary."""
+        network_count = len(self.commands)
+        valid_networks = len([cmd for cmd in self.commands if cmd.get('valid_network_id', False)])
+        managed_networks = len([cmd for cmd in self.commands if cmd.get('allow_managed', False)])
+        
+        return {
+            'section': 'ZeroTier Networks',
+            'command_count': network_count,
+            'network_count': network_count,
+            'valid_network_ids': valid_networks,
+            'managed_networks': managed_networks,
+            'has_global_routes': any(cmd.get('allow_global', False) for cmd in self.commands),
+            'has_default_routes': any(cmd.get('allow_default', False) for cmd in self.commands)
+        }
+
+
 class SpecialLoginParser(BaseSectionParser):
     """Parser for /special-login section."""
     
@@ -503,6 +897,10 @@ SectionParserRegistry.register('/mpls interface', MPLSInterfaceParser)
 SectionParserRegistry.register('/mpls forwarding-table', MPLSParser)  # Use base MPLS parser
 
 SectionParserRegistry.register('/container', ContainerParser)
+SectionParserRegistry.register('/container config', ContainerConfigParser)
+SectionParserRegistry.register('/container envs', ContainerEnvsParser)
+SectionParserRegistry.register('/container mounts', ContainerMountsParser)
+SectionParserRegistry.register('/zerotier', ZeroTierParser)
 SectionParserRegistry.register('/special-login', SpecialLoginParser)
 SectionParserRegistry.register('/partitions', PartitionsParser)
 
