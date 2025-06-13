@@ -48,7 +48,13 @@ class InterfaceSection(ConfigSection):
                 continue
                 
             name = cmd.get('name', '')
-            iface_type = cmd.get('type', self._detect_interface_type(name))
+            
+            # Use section name to determine interface type first
+            iface_type = self._detect_interface_type_from_section()
+            
+            # If section doesn't give us the type, use name-based detection
+            if iface_type == 'unknown':
+                iface_type = cmd.get('type', self._detect_interface_type(name))
             
             interface_data = {
                 'name': name,
@@ -65,11 +71,44 @@ class InterfaceSection(ConfigSection):
             else:
                 self.interfaces.append(interface_data)
                 
+    def _detect_interface_type_from_section(self) -> str:
+        """Detect interface type from section name."""
+        section_lower = self.name.lower()
+        
+        if 'vlan' in section_lower:
+            return 'vlan'
+        elif 'bridge' in section_lower:
+            return 'bridge'
+        elif 'ethernet' in section_lower:
+            return 'ethernet'
+        elif 'wireless' in section_lower:
+            return 'wireless'
+        elif 'bonding' in section_lower:
+            return 'bonding'
+        elif 'eoip' in section_lower:
+            return 'eoip'
+        elif 'gre' in section_lower:
+            return 'gre'
+        elif 'ipip' in section_lower:
+            return 'ipip'
+        elif 'l2tp' in section_lower:
+            return 'l2tp'
+        elif 'pptp' in section_lower:
+            return 'pptp'
+        elif 'sstp' in section_lower:
+            return 'sstp'
+        elif 'ovpn' in section_lower:
+            return 'ovpn'
+        elif 'lte' in section_lower:
+            return 'lte'
+            
+        return 'unknown'
+                
     def _detect_interface_type(self, name: str) -> str:
         """Detect interface type from name."""
         type_patterns = {
             'ether': 'ethernet',
-            'wlan': 'wireless',
+            'wlan': 'wireless', 
             'bridge': 'bridge',
             'vlan': 'vlan',
             'bond': 'bonding',
@@ -83,8 +122,11 @@ class InterfaceSection(ConfigSection):
             'lte': 'lte'
         }
         
+        # Convert name to lowercase for case-insensitive matching
+        name_lower = name.lower()
+        
         for pattern, iface_type in type_patterns.items():
-            if name.startswith(pattern):
+            if name_lower.startswith(pattern):
                 return iface_type
                 
         return 'unknown'
@@ -157,7 +199,11 @@ class IPSection(ConfigSection):
                 self.dhcp_networks.append(cmd)
             elif section_type == 'dns':
                 if 'servers' in cmd:
-                    self.dns_servers.extend(cmd['servers'].split(','))
+                    servers = cmd['servers']
+                    if isinstance(servers, str):
+                        self.dns_servers.extend(servers.split(','))
+                    elif isinstance(servers, list):
+                        self.dns_servers.extend(servers)
                     
     def _determine_ip_section_type(self) -> str:
         """Determine IP section type from section name."""
@@ -393,6 +439,17 @@ class RouterOSConfig:
             
         # Populate section data
         section.commands = section_data.get('commands', [])
+        
+        # Re-run post-init processing for sections that need it
+        if isinstance(section, InterfaceSection):
+            section._categorize_interfaces()
+        elif isinstance(section, IPSection):
+            section._parse_ip_config()
+        elif isinstance(section, SystemSection):
+            section._parse_system_config()
+        elif isinstance(section, FirewallSection):
+            section._parse_firewall_rules()
+            
         return section
         
     def get_section(self, name: str) -> Optional[ConfigSection]:

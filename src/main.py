@@ -7,8 +7,49 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 
-from .parser.core import RouterOSParser
-from .formatters.markdown import GitHubMarkdownFormatter
+# Support both package and direct execution
+try:
+    from .parser.core import RouterOSParser
+    from .formatters.markdown import GitHubMarkdownFormatter
+    from . import parse_config_file as convenience_parse_config_file
+    from . import validate_config_file, generate_markdown_summary
+except ImportError:
+    # Direct execution fallback
+    sys.path.insert(0, str(Path(__file__).parent))
+    from parser.core import RouterOSParser
+    from formatters.markdown import GitHubMarkdownFormatter
+    
+    def convenience_parse_config_file(file_path, device_name=None):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        if not device_name:
+            device_name = Path(file_path).stem.replace('.rsc', '')
+        parser = RouterOSParser(content, device_name)
+        return parser.parse()
+    
+    def validate_config_file(file_path):
+        try:
+            config = convenience_parse_config_file(file_path)
+            summary = config.get_device_summary()
+            return {
+                'valid': True,
+                'file_path': file_path,
+                'device_name': summary['device_name'],
+                'sections_parsed': summary['sections_parsed'],
+                'parsing_errors': summary['parsing_errors'],
+                'errors': config.errors if config.errors else []
+            }
+        except Exception as e:
+            return {
+                'valid': False,
+                'file_path': file_path,
+                'error': str(e),
+                'parsing_errors': 1
+            }
+    
+    def generate_markdown_summary(config):
+        formatter = GitHubMarkdownFormatter()
+        return formatter.format_device_summary(config.get_device_summary())
 
 
 def parse_config_file(file_path: Path) -> Dict[str, Any]:
@@ -189,6 +230,17 @@ Examples:
         '--validate-only',
         action='store_true',
         help='Only validate configuration syntax, do not generate summary'
+    )
+    
+    parser.add_argument(
+        '--device-name',
+        help='Override device name (for single file parsing)'
+    )
+    
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%(prog)s 1.0.0'
     )
     
     args = parser.parse_args()

@@ -33,7 +33,7 @@ setup(
     description="Parse RouterOS configuration files and generate GitHub-friendly summaries",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    url="https://github.com/your-org/routeros-parser",
+    url="https://github.com/ResiBridge/MK-Parser",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     classifiers=[
@@ -66,7 +66,8 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "routeros-parser=src.main:main",
+            "routeros-parser=routeros_parser.main:main",
+            "ros-parser=routeros_parser.main:main",
         ],
     },
     include_package_data=True,
