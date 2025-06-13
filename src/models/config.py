@@ -44,6 +44,11 @@ class InterfaceSection(ConfigSection):
     def _categorize_interfaces(self):
         """Categorize interfaces by type."""
         for cmd in self.commands:
+            # Handle bridge port configurations (don't have 'name' field)
+            if 'bridge' in cmd and 'interface' in cmd:
+                self.bridge_ports.append(cmd)
+                continue
+                
             if 'name' not in cmd:
                 continue
                 
@@ -55,6 +60,10 @@ class InterfaceSection(ConfigSection):
             # If section doesn't give us the type, use name-based detection
             if iface_type == 'unknown':
                 iface_type = cmd.get('type', self._detect_interface_type(name))
+            
+            # Special handling for bridge detection
+            if iface_type == 'unknown' and (name.startswith('BR-') or 'bridge' in name.lower()):
+                iface_type = 'bridge'
             
             interface_data = {
                 'name': name,
@@ -108,6 +117,7 @@ class InterfaceSection(ConfigSection):
         """Detect interface type from name."""
         type_patterns = {
             'ether': 'ethernet',
+            'sfp': 'ethernet',  # SFP ports are ethernet
             'wlan': 'wireless', 
             'bridge': 'bridge',
             'vlan': 'vlan',
@@ -140,8 +150,10 @@ class InterfaceSection(ConfigSection):
             'bridges': len(self.bridges),
             'vlans': len(self.vlans),
             'tunnels': len(self.tunnels),
+            'interfaces': self.interfaces,  # Include full interface data
             'bridge_list': [b.get('name', 'unnamed') for b in self.bridges],
-            'vlan_list': [f"VLAN {v.get('vlan-id', '?')} ({v.get('name', 'unnamed')})" for v in self.vlans]
+            'vlan_list': [f"VLAN {v.get('vlan-id', '?')} ({v.get('name', 'unnamed')})" for v in self.vlans],
+            'bridge_ports': self.bridge_ports  # Include bridge port configurations
         }
         
         # Add tunnel breakdown if any
@@ -277,7 +289,9 @@ class SystemSection(ConfigSection):
             if 'identity' in self.name.lower():
                 self.identity = cmd.get('name', 'Unknown')
             elif 'user' in self.name.lower():
-                self.users.append(cmd)
+                # Only count actual user accounts, not groups or AAA settings
+                if cmd.get('action') == 'add' and 'group' in cmd and 'name' in cmd:
+                    self.users.append(cmd)
             elif 'service' in self.name.lower():
                 self.services.append(cmd)
             elif 'clock' in self.name.lower():

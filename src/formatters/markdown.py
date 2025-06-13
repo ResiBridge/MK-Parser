@@ -22,7 +22,7 @@ class GitHubMarkdownFormatter:
         sections = summary.get('section_summaries', {})
         errors = summary.get('parsing_errors', 0)
         
-        markdown = f"# {device_name} Configuration Summary\n\n"
+        markdown = f"# {device_name} Configuration Analysis\n\n"
         
         # Overview section
         markdown += "## Overview\n\n"
@@ -39,12 +39,14 @@ class GitHubMarkdownFormatter:
         # Quick stats table
         markdown += self._generate_quick_stats_table(sections)
         
-        # Generate section summaries
-        for section_name, section_data in sections.items():
+        # Generate consolidated section summaries
+        consolidated_sections = self._consolidate_sections(sections)
+        
+        for section_type, section_data in consolidated_sections.items():
             if 'error' in section_data:
-                markdown += self._format_error_section(section_name, section_data)
+                markdown += self._format_error_section(section_type, section_data)
             else:
-                markdown += self._format_section(section_data)
+                markdown += self._format_consolidated_section(section_type, section_data)
                 
         # Add parsing errors if any
         if summary.get('errors'):
@@ -58,32 +60,40 @@ class GitHubMarkdownFormatter:
         markdown += "| Category | Count |\n"
         markdown += "|----------|-------|\n"
         
-        # Aggregate key statistics
+        # Aggregate key statistics across all sections
         stats = {
-            'Interfaces': 0,
+            'Physical Interfaces': 0,
+            'Bridge Interfaces': 0,
+            'VLAN Interfaces': 0,
             'IP Addresses': 0,
             'Firewall Rules': 0,
             'Users': 0,
-            'VLANs': 0,
-            'Bridges': 0
+            'DHCP Servers': 0
         }
         
         for section_data in sections.values():
             section_name = section_data.get('section', '')
             
+            # Interface aggregation
             if 'Interface' in section_name:
-                stats['Interfaces'] += section_data.get('total_interfaces', 0)
-                stats['VLANs'] += section_data.get('vlans', 0)
-                stats['Bridges'] += section_data.get('bridges', 0)
-            elif 'IP' in section_name and 'address' in section_name.lower():
+                stats['Physical Interfaces'] += section_data.get('physical_interfaces', 0)
+                stats['Bridge Interfaces'] += section_data.get('bridges', 0)
+                stats['VLAN Interfaces'] += section_data.get('vlans', 0)
+            
+            # IP configuration aggregation
+            elif 'IP Configuration' in section_name:
                 stats['IP Addresses'] += section_data.get('address_count', 0)
+                stats['DHCP Servers'] += section_data.get('dhcp_server_count', 0)
+            
+            # Firewall aggregation
             elif 'Firewall' in section_name:
-                stats['Firewall Rules'] += section_data.get('filter_rules', 0)
-                stats['Firewall Rules'] += section_data.get('nat_rules', 0)
-                stats['Firewall Rules'] += section_data.get('mangle_rules', 0)
-            elif 'User' in section_name:
+                stats['Firewall Rules'] += section_data.get('total_rules', 0)
+            
+            # System/User aggregation  
+            elif 'System' in section_name:
                 stats['Users'] += section_data.get('user_count', 0)
                 
+        # Only show categories with counts > 0
         for category, count in stats.items():
             if count > 0:
                 markdown += f"| {category} | {count} |\n"
@@ -91,21 +101,190 @@ class GitHubMarkdownFormatter:
         markdown += "\n"
         return markdown
         
-    def _format_section(self, section_data: Dict[str, Any]) -> str:
-        """Format individual section data."""
-        section_name = section_data.get('section', 'Unknown Section')
+    def _consolidate_sections(self, sections: Dict[str, Any]) -> Dict[str, Any]:
+        """Consolidate related sections into logical groups."""
+        consolidated = {
+            'System': {'sections': [], 'device_name': 'Unknown', 'users': [], 'services': [], 'timezone': None},
+            'Interfaces': {'sections': [], 'physical': [], 'bridges': [], 'vlans': [], 'tunnels': []},
+            'IP_Configuration': {'sections': [], 'addresses': [], 'routes': [], 'dhcp': [], 'dns': []},
+            'Firewall': {'sections': [], 'filter_rules': [], 'nat_rules': [], 'address_lists': []}
+        }
         
-        if section_name == 'Interfaces':
-            return self._format_interface_section(section_data)
-        elif 'IP' in section_name:
-            return self._format_ip_section(section_data)
-        elif section_name in ['System', 'System Identity', 'Users', 'IP Services']:
-            return self._format_system_section(section_data, '')
-        elif 'Firewall' in section_name:
-            return self._format_firewall_section(section_data, '')
-        else:
-            return self._format_generic_section(section_data, '')
+        for section_name, section_data in sections.items():
+            section_type = section_data.get('section', '')
             
+            if 'System' in section_type:
+                consolidated['System']['sections'].append(section_name)
+                if section_data.get('device_name') != 'Unknown':
+                    consolidated['System']['device_name'] = section_data.get('device_name')
+                if section_data.get('user_count', 0) > 0:
+                    consolidated['System']['users'].extend(section_data.get('user_list', []))
+                if section_data.get('timezone'):
+                    consolidated['System']['timezone'] = section_data.get('timezone')
+                    
+            elif 'Interface' in section_type:
+                consolidated['Interfaces']['sections'].append(section_name)
+                consolidated['Interfaces']['physical'].extend([f"{d.get('name', 'unnamed')}" for d in section_data.get('interfaces', [])])
+                consolidated['Interfaces']['bridges'].extend(section_data.get('bridge_list', []))
+                consolidated['Interfaces']['vlans'].extend(section_data.get('vlan_list', []))
+                # Add physical interfaces from bridge ports
+                for port in section_data.get('bridge_ports', []):
+                    interface = port.get('interface', '')
+                    if interface and interface not in consolidated['Interfaces']['physical']:
+                        consolidated['Interfaces']['physical'].append(interface)
+                
+            elif 'IP Configuration' in section_type:
+                consolidated['IP_Configuration']['sections'].append(section_name)
+                consolidated['IP_Configuration']['addresses'].extend(section_data.get('ip_addresses', []))
+                if section_data.get('dns_servers'):
+                    consolidated['IP_Configuration']['dns'].extend(section_data.get('dns_servers', []))
+                    
+            elif 'Firewall' in section_type:
+                consolidated['Firewall']['sections'].append(section_name)
+                if section_data.get('filter_rules', 0) > 0:
+                    consolidated['Firewall']['filter_rules'].append(section_data)
+                if section_data.get('nat_rules', 0) > 0:
+                    consolidated['Firewall']['nat_rules'].append(section_data)
+                if section_data.get('address_lists', 0) > 0:
+                    consolidated['Firewall']['address_lists'].append(section_data)
+        
+        return consolidated
+        
+    def _format_consolidated_section(self, section_type: str, section_data: Dict[str, Any]) -> str:
+        """Format consolidated section data."""
+        if section_type == 'System':
+            return self._format_system_consolidated(section_data)
+        elif section_type == 'Interfaces':
+            return self._format_interfaces_consolidated(section_data)
+        elif section_type == 'IP_Configuration':
+            return self._format_ip_consolidated(section_data)
+        elif section_type == 'Firewall':
+            return self._format_firewall_consolidated(section_data)
+        else:
+            return f"## {section_type}\n\nNo data available.\n\n"
+            
+    def _format_interfaces_consolidated(self, data: Dict[str, Any]) -> str:
+        """Format consolidated interface data."""
+        if not data['sections']:
+            return ""
+            
+        markdown = "## Interfaces\n\n"
+        
+        # Summary counts
+        physical_count = len(data['physical'])
+        bridge_count = len(data['bridges'])
+        vlan_count = len(data['vlans'])
+        total_count = physical_count + bridge_count + vlan_count
+        
+        markdown += "| Type | Count |\n"
+        markdown += "|------|-------|\n"
+        markdown += f"| Physical Interfaces | {physical_count} |\n"
+        markdown += f"| Bridge Interfaces | {bridge_count} |\n"
+        markdown += f"| VLAN Interfaces | {vlan_count} |\n"
+        markdown += f"| **Total** | **{total_count}** |\n\n"
+        
+        # Physical interfaces detail
+        if data['physical']:
+            markdown += "<details>\n<summary>Physical Interfaces</summary>\n\n"
+            for iface in data['physical']:
+                markdown += f"- `{iface}`\n"
+            markdown += "\n</details>\n\n"
+            
+        # Bridge interfaces detail
+        if data['bridges']:
+            markdown += "<details>\n<summary>Bridge Interfaces</summary>\n\n"
+            for bridge in data['bridges']:
+                markdown += f"- `{bridge}`\n"
+            markdown += "\n</details>\n\n"
+            
+        # VLAN interfaces detail
+        if data['vlans']:
+            markdown += "<details>\n<summary>VLAN Interfaces</summary>\n\n"
+            for vlan in data['vlans']:
+                markdown += f"- {vlan}\n"
+            markdown += "\n</details>\n\n"
+            
+        return markdown
+        
+    def _format_system_consolidated(self, data: Dict[str, Any]) -> str:
+        """Format consolidated system data."""
+        if not data['sections']:
+            return ""
+            
+        markdown = "## System Configuration\n\n"
+        
+        # Device identity
+        markdown += f"**Device Name:** `{data['device_name']}`\n"
+        if data['timezone']:
+            markdown += f"**Timezone:** `{data['timezone']}`\n"
+        markdown += "\n"
+        
+        # User accounts
+        if data['users']:
+            markdown += f"**Users:** {len(data['users'])}\n\n"
+            markdown += "<details>\n<summary>User Accounts</summary>\n\n"
+            for user in data['users']:
+                markdown += f"- `{user}`\n"
+            markdown += "\n</details>\n\n"
+            
+        return markdown
+        
+    def _format_ip_consolidated(self, data: Dict[str, Any]) -> str:
+        """Format consolidated IP configuration data."""
+        if not data['sections']:
+            return ""
+            
+        markdown = "## IP Configuration\n\n"
+        
+        # IP addresses
+        if data['addresses']:
+            markdown += f"**IP Addresses:** {len(data['addresses'])}\n\n"
+            markdown += "<details>\n<summary>IP Addresses</summary>\n\n"
+            for addr in data['addresses']:
+                markdown += f"- `{addr}`\n"
+            markdown += "\n</details>\n\n"
+            
+        # DNS servers
+        if data['dns']:
+            markdown += f"**DNS Servers:** {', '.join(f'`{dns}`' for dns in data['dns'])}\n\n"
+            
+        return markdown
+        
+    def _format_firewall_consolidated(self, data: Dict[str, Any]) -> str:
+        """Format consolidated firewall data."""
+        if not data['sections']:
+            return ""
+            
+        markdown = "## Firewall Configuration\n\n"
+        
+        # Calculate totals
+        total_filter = sum(s.get('filter_rules', 0) for s in data['filter_rules'])
+        total_nat = sum(s.get('nat_rules', 0) for s in data['nat_rules'])
+        total_address_lists = sum(s.get('address_lists', 0) for s in data['address_lists'])
+        total_rules = total_filter + total_nat
+        
+        markdown += "| Rule Type | Count |\n"
+        markdown += "|-----------|-------|\n"
+        if total_filter > 0:
+            markdown += f"| Filter Rules | {total_filter} |\n"
+        if total_nat > 0:
+            markdown += f"| NAT Rules | {total_nat} |\n"
+        if total_address_lists > 0:
+            markdown += f"| Address Lists | {total_address_lists} |\n"
+        markdown += f"| **Total Rules** | **{total_rules}** |\n\n"
+        
+        # Filter rules breakdown
+        if data['filter_rules']:
+            for rule_section in data['filter_rules']:
+                if rule_section.get('filter_by_chain'):
+                    markdown += "<details>\n<summary>Filter Rules by Chain</summary>\n\n"
+                    for chain, count in rule_section['filter_by_chain'].items():
+                        markdown += f"- **{chain.title()}**: {count}\n"
+                    markdown += "\n</details>\n\n"
+                    break
+                    
+        return markdown
+
     def _format_interface_section(self, data: Dict[str, Any]) -> str:
         """Format interface section data."""
         markdown = f"## Interfaces\n\n"
